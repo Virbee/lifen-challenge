@@ -1,0 +1,25 @@
+.drop-container {
+  display: flex;
+  flex-direction: column;
+  width: 30%;
+}
+
+.drop-dialog-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  border-width: 2;
+  border-radius: 2;
+  border-color: rgb(255, 103, 66);
+  border-style: dashed;
+  background-color: #fafafa;
+  color: rgb(255, 103, 66);
+  outline: none;
+  transition: border 0.24s ease-in-out;
+}
+
+.files-name {
+  margin: 20px 0;
+}

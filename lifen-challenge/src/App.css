@@ -1,0 +1,41 @@
+@import "./stylesheets/dropbox.css";
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+.App {
+  text-align: center;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.App-header {
+  background-color: rgb(255, 103, 66);
+  max-height: 200px;
+  padding: 2em;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-header h1 {
+  max-width: 600px;
+  margin: auto;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+.main-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2em;
+  height: 100vh;
+}
