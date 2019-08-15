@@ -9,17 +9,72 @@ class Dropbox extends Component {
     };
   }
 
-  onDrop = files => {
-    let newFiles = this.state.files.concat(files);
+  onDrop = droppedFiles => {
+    const newFilesObject = droppedFiles.map(file => {
+      return { file, loadingState: "pending" };
+    });
+    const newFiles = this.state.files.concat(newFilesObject);
     this.setState({ files: newFiles });
+
+    droppedFiles.forEach(droppedFile => {
+      const reader = new FileReader();
+      reader.onabort = () => {
+        this.setState({
+          files: this.state.files.map(fileObject => {
+            if (fileObject.file === droppedFile) {
+              return { file: fileObject.file, loadingState: "error" };
+            }
+            return fileObject;
+          })
+        });
+      };
+      reader.onerror = () => {
+        this.setState({
+          files: this.state.files.map(fileObject => {
+            if (fileObject.file === droppedFile) {
+              return { file: fileObject.file, loadingState: "error" };
+            }
+            return fileObject;
+          })
+        });
+      };
+      reader.onload = () => {
+        const arrayBuffer = reader.result;
+        fetch("https://fhirtest.uhn.ca/baseDstu3/Binary", {
+          method: "POST",
+          body: arrayBuffer
+        }).then(res => {
+          this.setState({
+            files: this.state.files.map(fileObject => {
+              if (fileObject.file === droppedFile) {
+                return { file: fileObject.file, loadingState: "done" };
+              }
+              return fileObject;
+            })
+          });
+        });
+      };
+      reader.readAsArrayBuffer(droppedFile);
+    });
   };
 
   render() {
-    const files = this.state.files.map(file => (
-      <li key={file.path}>
-        {file.path} - {file.size} bytes
-      </li>
-    ));
+    //icone correspondant à l'état de chargement du fichier
+    const files = this.state.files.map(fileObject => {
+      let stateIcon;
+      if (fileObject.loadingState === "pending") {
+        stateIcon = <i className="fas fa-cog fa-spin" />;
+      } else if (fileObject.loadingState === "done") {
+        stateIcon = <i className="far fa-check-circle" />;
+      } else {
+        stateIcon = <i className="fas fa-times" />;
+      }
+      return (
+        <li key={fileObject.file.path}>
+          {fileObject.file.path} - {fileObject.file.size} bytes {stateIcon}
+        </li>
+      );
+    });
     return (
       <Dropzone onDrop={this.onDrop}>
         {({ getRootProps, getInputProps }) => (
@@ -27,7 +82,7 @@ class Dropbox extends Component {
             <div {...getRootProps({ className: "drop-dialog-box" })}>
               <input {...getInputProps()} />
               <h2>
-                <i class="fas fa-cloud-upload-alt" />
+                <i className="fas fa-cloud-upload-alt" />
               </h2>
               <h3>Drag 'n' drop some files here</h3>
               <h4>or click to select files</h4>
