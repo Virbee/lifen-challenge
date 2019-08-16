@@ -5,9 +5,37 @@ class Dropbox extends Component {
   constructor(props) {
     super();
     this.state = {
-      files: []
+      files: [],
+      totalNumber: 0
     };
   }
+
+  componentDidMount() {
+    this.updateTotalCount();
+  }
+
+  updateTotalCount = () => {
+    fetch("https://fhirtest.uhn.ca/baseDstu3/Binary?_summary=count")
+      .then(response => response.json())
+      .then(data => {
+        this.setState({
+          totalNumber: data.total
+        });
+        console.log(data.total);
+      })
+      .catch(err => console.log(err));
+  };
+
+  changeLoadingState = (loadingState, droppedFile) => {
+    this.setState({
+      files: this.state.files.map(fileObject => {
+        if (fileObject.file === droppedFile) {
+          return { file: fileObject.file, loadingState };
+        }
+        return fileObject;
+      })
+    });
+  };
 
   onDrop = droppedFiles => {
     const newFilesObject = droppedFiles.map(file => {
@@ -19,62 +47,49 @@ class Dropbox extends Component {
     droppedFiles.forEach(droppedFile => {
       const reader = new FileReader();
       reader.onabort = () => {
-        this.setState({
-          files: this.state.files.map(fileObject => {
-            if (fileObject.file === droppedFile) {
-              return { file: fileObject.file, loadingState: "error" };
-            }
-            return fileObject;
-          })
-        });
+        this.changeLoadingState("error", droppedFile);
       };
       reader.onerror = () => {
-        this.setState({
-          files: this.state.files.map(fileObject => {
-            if (fileObject.file === droppedFile) {
-              return { file: fileObject.file, loadingState: "error" };
-            }
-            return fileObject;
-          })
-        });
+        this.changeLoadingState("error", droppedFile);
       };
       reader.onload = () => {
         const arrayBuffer = reader.result;
         fetch("https://fhirtest.uhn.ca/baseDstu3/Binary", {
           method: "POST",
           body: arrayBuffer
-        }).then(res => {
-          this.setState({
-            files: this.state.files.map(fileObject => {
-              if (fileObject.file === droppedFile) {
-                return { file: fileObject.file, loadingState: "done" };
-              }
-              return fileObject;
-            })
-          });
-        });
+        })
+          .then(res => {
+            this.changeLoadingState("done", droppedFile);
+            this.updateTotalCount();
+          })
+          .catch(err => this.changeLoadingState("error", droppedFile));
       };
       reader.readAsArrayBuffer(droppedFile);
     });
   };
 
   render() {
-    //icone correspondant à l'état de chargement du fichier
+    let fileMessage = null;
+    if (this.state.files[0]) {
+      fileMessage = <h4>My Files</h4>;
+    } else fileMessage = <h4>No file selected</h4>;
+
     const files = this.state.files.map(fileObject => {
       let stateIcon;
       if (fileObject.loadingState === "pending") {
-        stateIcon = <i className="fas fa-cog fa-spin" />;
+        stateIcon = <i className="fas fa-spinner fa-spin" />;
       } else if (fileObject.loadingState === "done") {
         stateIcon = <i className="far fa-check-circle" />;
       } else {
-        stateIcon = <i className="fas fa-times" />;
+        stateIcon = <i className="fas fa-exclamation-triangle" />;
       }
       return (
         <li key={fileObject.file.path}>
-          {fileObject.file.path} - {fileObject.file.size} bytes {stateIcon}
+          {stateIcon} {fileObject.file.path} - {fileObject.file.size} bytes
         </li>
       );
     });
+
     return (
       <Dropzone onDrop={this.onDrop}>
         {({ getRootProps, getInputProps }) => (
@@ -87,8 +102,13 @@ class Dropbox extends Component {
               <h3>Drag 'n' drop some files here</h3>
               <h4>or click to select files</h4>
             </div>
-            <aside className="files-name">
-              <h4>Files</h4>
+            <aside className="files-box">
+              <h4 className="file-message">
+                Currently there are {this.state.totalNumber} files on the
+                server.
+              </h4>
+              <h4>-</h4>
+              {fileMessage}
               <ul>{files}</ul>
             </aside>
           </div>

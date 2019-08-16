@@ -4,6 +4,12 @@
   width: 30%;
 }
 
+li {
+  list-style: none;
+  text-align: left;
+  margin: 10px;
+}
+
 .drop-dialog-box {
   flex: 1;
   display: flex;
@@ -20,6 +26,10 @@
   transition: border 0.24s ease-in-out;
 }
 
-.files-name {
+.files-box {
+  margin: 20px 0;
+}
+
+.file-message {
   margin: 20px 0;
 }
