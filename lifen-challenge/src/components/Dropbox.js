@@ -38,6 +38,17 @@ class Dropbox extends Component {
     }
   }
 
+  changeLoadingState = (loadingState, droppedFile, url) => {
+    this.setState({
+      files: this.state.files.map(fileObject => {
+        if (fileObject.file === droppedFile) {
+          return { file: fileObject.file, loadingState, url };
+        }
+        return fileObject;
+      })
+    });
+  };
+
   addNewFSFiles = filePath => {
     const fs = window.require("fs");
     const stats = fs.statSync(filePath);
@@ -59,25 +70,15 @@ class Dropbox extends Component {
       body: data
     })
       .then(res => {
+        const url = res.headers.get("Content-Location");
         if (res.status >= 200 && res.status <= 202) {
-          this.changeLoadingState("done", file);
+          this.changeLoadingState("done", file, url);
           this.updateTotalCount();
         } else {
           this.changeLoadingState("error", file);
         }
       })
       .catch(err => this.changeLoadingState("error", file));
-  };
-
-  changeLoadingState = (loadingState, droppedFile) => {
-    this.setState({
-      files: this.state.files.map(fileObject => {
-        if (fileObject.file === droppedFile) {
-          return { file: fileObject.file, loadingState };
-        }
-        return fileObject;
-      })
-    });
   };
 
   onDrop = droppedFiles => {
@@ -102,7 +103,8 @@ class Dropbox extends Component {
           body: arrayBuffer
         })
           .then(res => {
-            this.changeLoadingState("done", droppedFile);
+            const url = res.headers.get("Content-Location");
+            this.changeLoadingState("done", droppedFile, url);
             this.updateTotalCount();
           })
           .catch(err => this.changeLoadingState("error", droppedFile));
@@ -128,7 +130,8 @@ class Dropbox extends Component {
       }
       return (
         <li key={fileObject.file.path}>
-          {stateIcon} {fileObject.file.path} - {fileObject.file.size} bytes
+          {stateIcon} <a href={fileObject.url}>{fileObject.file.path}</a> -{" "}
+          {fileObject.file.size} bytes
         </li>
       );
     });
