@@ -12,6 +12,7 @@ class Dropbox extends Component {
 
   componentDidMount() {
     this.updateTotalCount();
+    this.watchNewFiles();
   }
 
   updateTotalCount = () => {
@@ -21,9 +22,51 @@ class Dropbox extends Component {
         this.setState({
           totalNumber: data.total
         });
-        console.log(data.total);
       })
       .catch(err => console.log(err));
+  };
+
+  watchNewFiles() {
+    if (window.require) {
+      const chokidar = window.require("chokidar");
+      const watcher = chokidar.watch("public/uploads", {
+        persistent: true
+      });
+      watcher.on("add", filePath => {
+        this.addNewFSFiles(filePath);
+      });
+    }
+  }
+
+  addNewFSFiles = filePath => {
+    const fs = window.require("fs");
+    const stats = fs.statSync(filePath);
+    const fileSizeInBytes = stats.size;
+
+    const path = window.require("path");
+    const fileName = path.basename(filePath);
+    const file = { path: fileName, size: fileSizeInBytes };
+
+    const newFile = this.state.files.concat({
+      file,
+      loadingState: "pending"
+    });
+    this.setState({ files: newFile });
+
+    const data = fs.readFileSync(filePath);
+    fetch("https://fhirtest.uhn.ca/baseDstu3/Binary", {
+      method: "POST",
+      body: data
+    })
+      .then(res => {
+        if (res.status >= 200 && res.status <= 202) {
+          this.changeLoadingState("done", file);
+          this.updateTotalCount();
+        } else {
+          this.changeLoadingState("error", file);
+        }
+      })
+      .catch(err => this.changeLoadingState("error", file));
   };
 
   changeLoadingState = (loadingState, droppedFile) => {
