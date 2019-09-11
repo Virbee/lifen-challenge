@@ -49,6 +49,23 @@ class Dropbox extends Component {
     });
   };
 
+  fetchToAPI = (data, file) => {
+    fetch("https://fhirtest.uhn.ca/baseDstu3/Binary", {
+      method: "POST",
+      body: data
+    })
+      .then(res => {
+        const url = res.headers.get("Content-Location");
+        if (res.status >= 200 && res.status <= 202) {
+          this.changeLoadingState("done", file, url);
+          this.updateTotalCount();
+        } else {
+          this.changeLoadingState("error", file);
+        }
+      })
+      .catch(err => this.changeLoadingState("error", file));
+  };
+
   addNewFSFiles = filePath => {
     const fs = window.require("fs");
     const stats = fs.statSync(filePath);
@@ -65,20 +82,7 @@ class Dropbox extends Component {
     this.setState({ files: newFile });
 
     const data = fs.readFileSync(filePath);
-    fetch("https://fhirtest.uhn.ca/baseDstu3/Binary", {
-      method: "POST",
-      body: data
-    })
-      .then(res => {
-        const url = res.headers.get("Content-Location");
-        if (res.status >= 200 && res.status <= 202) {
-          this.changeLoadingState("done", file, url);
-          this.updateTotalCount();
-        } else {
-          this.changeLoadingState("error", file);
-        }
-      })
-      .catch(err => this.changeLoadingState("error", file));
+    this.fetchToAPI(data, file);
   };
 
   onDrop = droppedFiles => {
@@ -98,55 +102,103 @@ class Dropbox extends Component {
       };
       reader.onload = () => {
         const arrayBuffer = reader.result;
-        fetch("https://fhirtest.uhn.ca/baseDstu3/Binary", {
-          method: "POST",
-          body: arrayBuffer
-        })
-          .then(res => {
-            const url = res.headers.get("Content-Location");
-            this.changeLoadingState("done", droppedFile, url);
-            this.updateTotalCount();
-          })
-          .catch(err => this.changeLoadingState("error", droppedFile));
+        this.fetchToAPI(arrayBuffer, droppedFile);
       };
       reader.readAsArrayBuffer(droppedFile);
     });
   };
 
   render() {
-    let fileMessage = null;
-    if (this.state.files[0]) {
-      fileMessage = <h4>My Files</h4>;
-    } else fileMessage = <h4>No file selected</h4>;
+    const files = this.state.files
+      .filter(fileObject => fileObject.loadingState !== "error")
+      .map(fileObject => {
+        let stateIcon;
+        if (fileObject.loadingState === "pending") {
+          stateIcon = <i className="fas fa-spinner fa-spin" />;
+        } else {
+          stateIcon = <i className="far fa-check-circle" />;
+        }
+        let newSize;
+        if (fileObject.file.size >= 1000000) {
+          newSize = Math.round(fileObject.file.size / 100000) / 10 + "Mo";
+        } else if (fileObject.file.size >= 1000) {
+          newSize = Math.round(fileObject.file.size / 100) / 10 + "Ko";
+        } else {
+          newSize = fileObject.file.size + " octets";
+        }
+        return (
+          <li key={fileObject.file.path}>
+            {stateIcon} <a href={fileObject.url}>{fileObject.file.path}</a> -{" "}
+            {newSize}
+          </li>
+        );
+      });
 
-    const files = this.state.files.map(fileObject => {
-      let stateIcon;
-      if (fileObject.loadingState === "pending") {
-        stateIcon = <i className="fas fa-spinner fa-spin" />;
-      } else if (fileObject.loadingState === "done") {
-        stateIcon = <i className="far fa-check-circle" />;
-      } else {
-        stateIcon = <i className="fas fa-exclamation-triangle" />;
-      }
-      return (
-        <li key={fileObject.file.path}>
-          {stateIcon} <a href={fileObject.url}>{fileObject.file.path}</a> -{" "}
-          {fileObject.file.size} bytes
-        </li>
-      );
-    });
+    const failedFiles = this.state.files
+      .filter(fileObject => fileObject.loadingState === "error")
+      .map(fileObject => {
+        let stateIcon = <i className="fas fa-exclamation-triangle" />;
+        let newSize;
+        if (fileObject.file.size >= 1000000) {
+          newSize = Math.round(fileObject.file.size / 100000) / 10 + "Mo";
+        } else if (fileObject.file.size >= 1000) {
+          newSize = Math.round(fileObject.file.size / 100) / 10 + "Ko";
+        } else {
+          newSize = fileObject.file.size + " octets";
+        }
+        return (
+          <li key={fileObject.file.path}>
+            {stateIcon} {fileObject.file.path} - {newSize}
+          </li>
+        );
+      });
+
+    let fileMessage = null;
+    if (!files[0]) {
+      fileMessage = <h4>No file selected</h4>;
+    } else if (this.state.files.length === failedFiles) {
+      fileMessage = null;
+    } else {
+      fileMessage = <h4>My Files</h4>;
+    }
+
+    let failedMessage = null;
+    if (failedFiles[0]) {
+      failedMessage = <h4>These files failed to upload.</h4>;
+    }
+
+    const baseStyle = {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      padding: "20px",
+      borderWidth: 2,
+      borderRadius: 2,
+      borderColor: "rgb(255, 103, 66)",
+      borderStyle: "dashed",
+      backgroundColor: "#fafafa",
+      color: "rgb(255, 103, 66)",
+      outline: "none",
+      transition: "border .24s ease-in-out"
+    };
 
     return (
       <Dropzone onDrop={this.onDrop}>
         {({ getRootProps, getInputProps }) => (
           <div className="drop-container">
-            <div {...getRootProps({ className: "drop-dialog-box" })}>
-              <input {...getInputProps()} />
+            <div
+              {...getRootProps({ className: "drop-dialog-box" })}
+              style={baseStyle}
+              accept="application/pdf"
+            >
+              <input {...getInputProps()} accept="application/pdf" />
               <h2>
                 <i className="fas fa-cloud-upload-alt" />
               </h2>
               <h3>Drag 'n' drop some files here</h3>
               <h4>or click to select files</h4>
+              <p>(2Mo max, pdf only)</p>
             </div>
             <aside className="files-box">
               <h4 className="file-message">
@@ -156,6 +208,9 @@ class Dropbox extends Component {
               <h4>-</h4>
               {fileMessage}
               <ul>{files}</ul>
+              <br></br>
+              {failedMessage}
+              <ul>{failedFiles}</ul>
             </aside>
           </div>
         )}

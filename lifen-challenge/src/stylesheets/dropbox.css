@@ -1,7 +1,11 @@
 .drop-container {
   display: flex;
   flex-direction: column;
-  width: 30%;
+  max-width: 600px;
+}
+
+ul {
+  padding: 0;
 }
 
 li {
@@ -16,14 +20,18 @@ li {
   flex-direction: column;
   align-items: center;
   padding: 20px;
-  border-width: 2;
-  border-radius: 2;
-  border-color: rgb(255, 103, 66);
-  border-style: dashed;
-  background-color: #fafafa;
+  border-width: 2 !important;
+  border-radius: 2 !important;
+  border-color: rgb(255, 103, 66) !important ;
+  border-style: dashed !important ;
+  background-color: #fafafa !important;
   color: rgb(255, 103, 66);
   outline: none;
-  transition: border 0.24s ease-in-out;
+  transition: border 0.24s ease-in-out !important;
+}
+
+.drop-dialog-box p {
+  margin-top: 10px;
 }
 
 .files-box {
