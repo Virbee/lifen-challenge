@@ -1,6 +1,5 @@
 import React from "react";
 import "./App.css";
-// import DragDropDemo from "./components/DragDropDemo";
 import Dropbox from "./components/Dropbox";
 
 function App() {
@@ -11,7 +10,6 @@ function App() {
       </header>
       <section className="main-container">
         <Dropbox />
-        {/* <DragDropDemo /> */}
       </section>
     </div>
   );

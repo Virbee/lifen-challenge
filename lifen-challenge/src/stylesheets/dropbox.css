@@ -1,6 +1,7 @@
 .drop-container {
   display: flex;
   flex-direction: column;
+  width: 100%;
   max-width: 600px;
 }
 
@@ -20,14 +21,17 @@ li {
   flex-direction: column;
   align-items: center;
   padding: 20px;
-  border-width: 2 !important;
-  border-radius: 2 !important;
-  border-color: rgb(255, 103, 66) !important ;
-  border-style: dashed !important ;
-  background-color: #fafafa !important;
+  border: 2px rgb(255, 103, 66) dashed;
+  border-radius: 2px;
+  background-color: #fafafa;
   color: rgb(255, 103, 66);
   outline: none;
-  transition: border 0.24s ease-in-out !important;
+  transition: 0.1s ease-in-out;
+  cursor: pointer;
+}
+
+.drop-dialog-box:hover {
+  background-color: rgba(255, 103, 66, 0.08);
 }
 
 .drop-dialog-box p {
@@ -35,7 +39,8 @@ li {
 }
 
 .files-box {
-  margin: 20px 0;
+  margin: 20px auto;
+  max-width: 400px;
 }
 
 .file-message {

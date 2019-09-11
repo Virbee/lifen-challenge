@@ -10,7 +10,7 @@ function createWindow() {
     }
   });
 
-  win.toggleDevTools();
+  // win.toggleDevTools();
 
   // and load the index.html of the app.
   win.loadFile("build/index.html");

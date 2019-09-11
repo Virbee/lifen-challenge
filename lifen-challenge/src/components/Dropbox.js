@@ -29,12 +29,14 @@ class Dropbox extends Component {
   watchNewFiles() {
     if (window.require) {
       const chokidar = window.require("chokidar");
-      const watcher = chokidar.watch("public/uploads", {
+      const watcher = chokidar.watch("uploads", {
         persistent: true
       });
       watcher.on("add", filePath => {
         this.addNewFSFiles(filePath);
       });
+    } else {
+      console.warn("This isn't an Electron app. Can't watch the directory");
     }
   }
 
@@ -49,21 +51,31 @@ class Dropbox extends Component {
     });
   };
 
-  fetchToAPI = (data, file) => {
-    fetch("https://fhirtest.uhn.ca/baseDstu3/Binary", {
-      method: "POST",
-      body: data
-    })
-      .then(res => {
-        const url = res.headers.get("Content-Location");
-        if (res.status >= 200 && res.status <= 202) {
-          this.changeLoadingState("done", file, url);
-          this.updateTotalCount();
-        } else {
-          this.changeLoadingState("error", file);
-        }
+  sendFileToServer = (data, file) => {
+    if (file.size > 2000000 || file.path.indexOf(".pdf") < 0) {
+      const newFiles = this.state.files.concat({ file, loadingState: "error" });
+      this.setState({ files: newFiles });
+    } else {
+      const newFile = this.state.files.concat({
+        file,
+        loadingState: "pending"
+      });
+      this.setState({ files: newFile });
+      fetch("https://fhirtest.uhn.ca/baseDstu3/Binary", {
+        method: "POST",
+        body: data
       })
-      .catch(err => this.changeLoadingState("error", file));
+        .then(res => {
+          const url = res.headers.get("Content-Location");
+          if (res.status >= 200 && res.status <= 202) {
+            this.changeLoadingState("done", file, url);
+            this.updateTotalCount();
+          } else {
+            this.changeLoadingState("error", file);
+          }
+        })
+        .catch(err => this.changeLoadingState("error", file));
+    }
   };
 
   addNewFSFiles = filePath => {
@@ -74,24 +86,11 @@ class Dropbox extends Component {
     const path = window.require("path");
     const fileName = path.basename(filePath);
     const file = { path: fileName, size: fileSizeInBytes };
-
-    const newFile = this.state.files.concat({
-      file,
-      loadingState: "pending"
-    });
-    this.setState({ files: newFile });
-
     const data = fs.readFileSync(filePath);
-    this.fetchToAPI(data, file);
+    this.sendFileToServer(data, file);
   };
 
   onDrop = droppedFiles => {
-    const newFilesObject = droppedFiles.map(file => {
-      return { file, loadingState: "pending" };
-    });
-    const newFiles = this.state.files.concat(newFilesObject);
-    this.setState({ files: newFiles });
-
     droppedFiles.forEach(droppedFile => {
       const reader = new FileReader();
       reader.onabort = () => {
@@ -102,7 +101,7 @@ class Dropbox extends Component {
       };
       reader.onload = () => {
         const arrayBuffer = reader.result;
-        this.fetchToAPI(arrayBuffer, droppedFile);
+        this.sendFileToServer(arrayBuffer, droppedFile);
       };
       reader.readAsArrayBuffer(droppedFile);
     });
@@ -128,8 +127,11 @@ class Dropbox extends Component {
         }
         return (
           <li key={fileObject.file.path}>
-            {stateIcon} <a href={fileObject.url}>{fileObject.file.path}</a> -{" "}
-            {newSize}
+            {stateIcon}{" "}
+            <a href={fileObject.url} download="toto.pdf">
+              {fileObject.file.path}
+            </a>{" "}
+            - {newSize}
           </li>
         );
       });
@@ -167,29 +169,12 @@ class Dropbox extends Component {
       failedMessage = <h4>These files failed to upload.</h4>;
     }
 
-    const baseStyle = {
-      flex: 1,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      padding: "20px",
-      borderWidth: 2,
-      borderRadius: 2,
-      borderColor: "rgb(255, 103, 66)",
-      borderStyle: "dashed",
-      backgroundColor: "#fafafa",
-      color: "rgb(255, 103, 66)",
-      outline: "none",
-      transition: "border .24s ease-in-out"
-    };
-
     return (
       <Dropzone onDrop={this.onDrop}>
         {({ getRootProps, getInputProps }) => (
           <div className="drop-container">
             <div
               {...getRootProps({ className: "drop-dialog-box" })}
-              style={baseStyle}
               accept="application/pdf"
             >
               <input {...getInputProps()} accept="application/pdf" />
